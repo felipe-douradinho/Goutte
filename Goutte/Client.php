@@ -14,6 +14,7 @@ namespace Goutte;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\ClientInterface as GuzzleClientInterface;
 use GuzzleHttp\Cookie\CookieJar;
+use GuzzleHttp\Cookie\SetCookie;
 use GuzzleHttp\Exception\RequestException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
@@ -35,6 +36,7 @@ class Client extends BaseClient
 
     private $headers = array();
     private $auth;
+    private $guzzleCookieJar = null;
 
     public function setClient(GuzzleClientInterface $client)
     {
@@ -75,6 +77,19 @@ class Client extends BaseClient
         return $this->client;
     }
 
+    public function getGuzzleCookieJar()
+    {
+        if (empty($this->guzzleCookieJar)) {
+            $this->guzzleCookieJar = new CookieJar();
+        }
+        return $this->guzzleCookieJar;
+    }
+    
+    public function setGuzzleCookieJar($guzzleCookieJar)
+    {
+        $this->guzzleCookieJar = $guzzleCookieJar;
+    }
+    
     public function setHeader($name, $value)
     {
         $this->headers[strtolower($name)] = $value;
@@ -138,10 +153,17 @@ class Client extends BaseClient
             }
         }
 
-        $cookies = CookieJar::fromArray(
-            $this->getCookieJar()->allRawValues($request->getUri()),
-            parse_url($request->getUri(), PHP_URL_HOST)
-        );
+        $cookies = $this->getCookieJar()->allRawValues($request->getUri());
+        $domain = parse_url($request->getUri(), PHP_URL_HOST);
+        
+        foreach ($cookies as $name => $value) {
+            $this->getGuzzleCookieJar()->setCookie(new SetCookie([
+                'Domain'  => $domain,
+                'Name'    => $name,
+                'Value'   => $value,
+                'Discard' => true
+            ]));
+        }
 
         $requestOptions = array(
             'cookies' => $cookies,
