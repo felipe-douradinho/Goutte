@@ -166,7 +166,7 @@ class Client extends BaseClient
         }
 
         $requestOptions = array(
-            'cookies' => $cookies,
+            'cookies' => $this->getGuzzleCookieJar(),
             'allow_redirects' => false,
             'auth' => $this->auth,
         );
